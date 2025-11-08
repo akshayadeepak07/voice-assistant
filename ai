@@ -1,0 +1,149 @@
+import speech_recognition as sr
+import pyttsx3
+import pywhatkit
+import datetime
+import os
+import random
+import subprocess
+
+# === Assistant setup ===
+assistant_name = "Stark"
+user_name = "Akshu"
+
+engine = pyttsx3.init()
+engine.setProperty('rate', 175)
+voices = engine.getProperty('voices')
+engine.setProperty('voice', voices[1].id)  # Female voice
+
+
+def speak(text):
+    print(f"🤖 {assistant_name}: {text}")
+    engine.say(text)
+    engine.runAndWait()
+
+
+def listen():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("🎤 Listening...")
+        audio = recognizer.listen(source)
+    try:
+        command = recognizer.recognize_google(audio).lower()
+        print(f"🗣️ You said: {command}")
+        return command
+    except:
+        return ""
+
+
+# === In-memory memory ===
+memory = {}
+
+
+def remember(command):
+    if "remember that" in command:
+        info = command.replace("remember that", "").strip()
+        if "is" in info:
+            key, value = info.split("is")[0].strip(), info.split("is")[-1].strip()
+            memory[key] = value
+            speak(f"Got it {user_name}, I’ll remember that your {key} is {value}.")
+        else:
+            speak("Please tell me clearly what to remember.")
+        return True
+    elif "what is my" in command:
+        key = command.replace("what is my", "").strip()
+        if key in memory:
+            speak(f"Your {key} is {memory[key]}, {user_name}.")
+        else:
+            speak(f"I don’t remember your {key} yet, {user_name}.")
+        return True
+    return False
+
+
+def open_application(command):
+    if "notepad" in command:
+        speak("Opening Notepad.")
+        os.system("notepad")
+
+    elif "google" in command:
+        speak("Opening Google.")
+        pywhatkit.playonyt("Google")
+
+    elif "chatgpt" in command:
+        speak("Opening ChatGPT.")
+        os.system("start https://chat.openai.com")
+
+    elif "youtube" in command:
+        speak("Opening YouTube.")
+        os.system("start https://youtube.com")
+
+    elif "calculator" in command:
+        speak("Opening Calculator.")
+        subprocess.Popen('calc.exe')
+
+    else:
+        return False
+    return True
+
+
+def ai_reply(command):
+    """Simple offline conversational responses"""
+    replies = {
+        "how are you": f"I’m doing great {user_name}, ready to help you!",
+        "who are you": f"I’m {assistant_name}, your personal AI assistant!",
+        "what is your name": f"My name is {assistant_name}, {user_name}.",
+        "sing": "🎵 La la la... I'm not a singer, but I can try for you, Akshu!",
+        "joke": random.choice([
+            "Why did the computer show up at work late? It had a hard drive!",
+            "Why was the computer cold? It forgot to close its Windows!",
+            "Why don’t robots have brothers? Because they all share the same motherboard!"
+        ]),
+        "time": f"The time is {datetime.datetime.now().strftime('%I:%M %p')}, {user_name}.",
+    }
+
+    for key in replies:
+        if key in command:
+            speak(replies[key])
+            return True
+    return False
+
+
+def run_stark():
+    command = listen()
+    if command == "":
+        speak("Sorry, I didn’t catch that. Please repeat.")
+        return
+
+    if remember(command):
+        return
+    if open_application(command):
+        return
+    if ai_reply(command):
+        return
+
+    if "bye" in command or "exit" in command or "stop" in command:
+        speak(f"Goodbye {user_name}! Have a great day!")
+        exit()
+
+    speak("Sorry, I didn’t understand that. Try again.")
+
+
+# === Greeting ===
+hour = datetime.datetime.now().hour
+if hour < 12:
+    greet = "Good Morning"
+elif hour < 18:
+    greet = "Good Afternoon"
+else:
+    greet = "Good Evening"
+
+speak(f"{greet} {user_name}! I am {assistant_name}, your AI assistant.")
+speak(f"Say '{assistant_name}' to wake me up.")
+
+
+# === Wake Word Loop ===
+while True:
+    print(f"\n🎧 Waiting for wake word '{assistant_name}'...")
+    wake = listen()
+    if any(word in wake for word in ["stark", "star", "start", "starky"]):
+        speak(f"Yes {user_name}, {assistant_name} here. What can I do for you?")
+        run_stark()
